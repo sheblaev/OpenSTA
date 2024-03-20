@@ -237,29 +237,31 @@ proc set_units { args } {
   check_unit "distance" -distance "m" keys
 }
 
-proc check_unit { unit key suffix key_var } {
+
+proc check_unit { unit key unit_name key_var } {
   upvar 1 $key_var keys
   if { [info exists keys($key)] } {
     set value $keys($key)
-    set suffix_length [string length $suffix]
-    set arg_suffix [string range $value end-[expr $suffix_length - 1] end]
-    if { [string match -nocase $arg_suffix $suffix] } {
-      set arg_prefix [string range $value 0 end-$suffix_length]
-      if { [regexp "^(10*)?(\[Mkmunpf\])?$" $arg_prefix ignore mult prefix] } {
-        #puts "$arg_prefix '$mult' '$prefix'"
-        if { $mult == "" } {
-          set mult 1
-        }
-        set scale [unit_prefix_scale $unit $prefix ]
-        check_unit_scale $unit [expr $scale * $mult]
-      } else {
-        sta_error 343 "unknown unit $unit prefix '${arg_prefix}'."
+    set pos [string length $unit_name]
+    set suffix [string range $value end-[incr pos -1] end]
+    if { [string equal -nocase $suffix $unit_name] } {
+      set prefix [string index $value end-[incr pos]]
+      set scale [string range $value 0 end-[incr pos]]
+      if { [string is digit -strict $prefix] } {
+        append scale $prefix
+        set prefix ""
       }
+      if { $scale == "" } {
+        set scale 1.0
+      }
+      set scale [expr {$scale * [unit_prefix_scale $unit $prefix]}]
+      check_unit_scale $unit $scale
     } else {
-      sta_error 501 "incorrect unit suffix '$arg_suffix'."
+      sta_error 343 "unknown unit $unit '$suffix'."
     }
   }
 }
+ 
 
 proc unit_prefix_scale { unit prefix } {
   switch -exact -- $prefix {
